@@ -1,0 +1,20 @@
+---
+import { t } from '../i18n';
+import LevelSwitcher from './LevelSwitcher.astro';
+
+interface Props {
+  showSwitcher?: boolean;
+}
+
+const { showSwitcher = true } = Astro.props;
+---
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="site-header__brand" href="/">{t('da', 'site.title')}</a>
+    <nav class="site-header__nav" aria-label="Primary">
+      {showSwitcher && <LevelSwitcher />}
+      <a href="/arkiv/">{t('da', 'nav.archive')}</a>
+      <a href="/om/">{t('da', 'nav.about')}</a>
+    </nav>
+  </div>
+</header>

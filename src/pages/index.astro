@@ -1,0 +1,56 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import IssueCover from '../components/IssueCover.astro';
+import { getLatestPublishedIssue, getIssueBody } from '../lib/issues';
+import { t } from '../i18n';
+
+const latest = await getLatestPublishedIssue();
+
+const podcastHref = latest?.entry.data.spotifyEpisodeId
+  ? `https://open.spotify.com/episode/${latest.entry.data.spotifyEpisodeId}`
+  : 'https://open.spotify.com';
+
+const defaultLevel = 'gymnasium';
+const readMoreHref = latest ? `/${latest.folder.replace('-', '/')}/${defaultLevel}/` : '/';
+
+let readingMinutes: number | undefined;
+if (latest) {
+  try {
+    const body = await getIssueBody(latest.folder, defaultLevel);
+    readingMinutes = body.data.readingTimeMinutes;
+  } catch { /* no body yet for default level */ }
+}
+
+const description = latest?.entry.data.summary ?? t('da', 'site.tagline');
+const title = latest ? latest.entry.data.topic : t('da', 'site.tagline');
+---
+<BaseLayout title={title} description={description}>
+  <SiteHeader slot="header" showSwitcher={false} />
+  {latest ? (
+    <IssueCover
+      palette={latest.entry.data.palette}
+      number={latest.number}
+      releaseDate={latest.entry.data.releaseDate}
+      topic={latest.entry.data.topic}
+      summary={latest.entry.data.summary}
+      readMoreHref={readMoreHref}
+      podcastHref={podcastHref}
+      readingTimeMinutes={readingMinutes}
+      nextIssueDate={latest.entry.data.nextIssue?.releaseDate}
+      cover={latest.entry.data.cover}
+      transitionName={`topic-${latest.folder}`}
+    />
+  ) : (
+    <section class="cover palette-warm">
+      <div class="cover__body">
+        <h1 class="cover__topic">{t('da', 'site.tagline')}</h1>
+        <p class="cover__summary">Første udgave kommer snart.</p>
+      </div>
+    </section>
+  )}
+</BaseLayout>
+
+<script>
+  import '../scripts/level-memory.ts';
+</script>

@@ -1,0 +1,69 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import SiteHeader from '../../../../components/SiteHeader.astro';
+import PodcastEmbed from '../../../../components/PodcastEmbed.astro';
+import IssueNav from '../../../../components/IssueNav.astro';
+import SuperpositionDemo from '../../../../components/SuperpositionDemo.astro';
+import { getIssuesNumbered, getIssueBody, levelSlugs, type Level } from '../../../../lib/issues';
+import { render } from 'astro:content';
+import { t, formatDanishMonthYear } from '../../../../i18n';
+
+export async function getStaticPaths() {
+  const numbered = await getIssuesNumbered();
+  return numbered.flatMap((issue) => {
+    const [year, month] = issue.folder.split('-');
+    return levelSlugs.map((level) => ({
+      params: { year, month, level },
+      props: { issue, level, allIssues: numbered }
+    }));
+  });
+}
+
+type NumberedIssueEntry = Awaited<ReturnType<typeof getIssuesNumbered>>[number];
+type Props = {
+  issue: NumberedIssueEntry;
+  level: Level;
+  allIssues: NumberedIssueEntry[];
+};
+
+const { issue, level, allIssues } = Astro.props;
+
+const body = await getIssueBody(issue.folder, level);
+const { Content } = await render(body);
+
+const idx = allIssues.findIndex((i) => i.folder === issue.folder);
+const previous = idx > 0
+  ? { folder: allIssues[idx - 1].folder, releaseDate: allIssues[idx - 1].entry.data.releaseDate }
+  : undefined;
+const next = idx < allIssues.length - 1
+  ? { folder: allIssues[idx + 1].folder, releaseDate: allIssues[idx + 1].entry.data.releaseDate }
+  : undefined;
+
+const monthYear = formatDanishMonthYear(issue.entry.data.releaseDate);
+const eyebrow = t('da', 'reading.eyebrow', {
+  number: issue.number,
+  month: monthYear.split(' ')[0],
+  year: monthYear.split(' ')[1],
+  level: t('da', `levels.${level}.name`)
+});
+---
+<BaseLayout title={issue.entry.data.topic} description={issue.entry.data.summary}>
+  <SiteHeader slot="header" />
+  <article class="reading">
+    <div class="reading__progress" aria-hidden="true">
+      <span class="reading__progress-fill"></span>
+    </div>
+    <div class="reading__eyebrow">{eyebrow}</div>
+    <h1 class="reading__title" transition:name={`topic-${issue.folder}`}>{issue.entry.data.topic}</h1>
+    <div class="reading__prose">
+      <Content />
+    </div>
+    {issue.entry.data.interactive === 'superposition' && <SuperpositionDemo />}
+    <PodcastEmbed episodeId={issue.entry.data.spotifyEpisodeId} />
+    <IssueNav previous={previous} next={next} level={level} />
+  </article>
+</BaseLayout>
+
+<script>
+  import '../../../../scripts/reading-anim.ts';
+</script>

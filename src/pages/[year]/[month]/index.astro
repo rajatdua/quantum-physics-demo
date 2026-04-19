@@ -1,0 +1,47 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import SiteHeader from '../../../components/SiteHeader.astro';
+import IssueCover from '../../../components/IssueCover.astro';
+import { getIssuesNumbered, getIssueBody } from '../../../lib/issues';
+
+export async function getStaticPaths() {
+  const numbered = await getIssuesNumbered();
+  return numbered.map((i) => {
+    const [year, month] = i.folder.split('-');
+    return { params: { year, month }, props: { issue: i } };
+  });
+}
+
+type NumberedIssueEntry = Awaited<ReturnType<typeof getIssuesNumbered>>[number];
+type Props = { issue: NumberedIssueEntry };
+
+const { issue } = Astro.props;
+
+const defaultLevel = 'gymnasium';
+const readMoreHref = `/${issue.folder.replace('-', '/')}/${defaultLevel}/`;
+const podcastHref = issue.entry.data.spotifyEpisodeId
+  ? `https://open.spotify.com/episode/${issue.entry.data.spotifyEpisodeId}`
+  : 'https://open.spotify.com';
+
+let readingMinutes: number | undefined;
+try {
+  const body = await getIssueBody(issue.folder, defaultLevel);
+  readingMinutes = body.data.readingTimeMinutes;
+} catch { /* noop */ }
+---
+<BaseLayout title={issue.entry.data.topic} description={issue.entry.data.summary}>
+  <SiteHeader slot="header" showSwitcher={false} />
+  <IssueCover
+    palette={issue.entry.data.palette}
+    number={issue.number}
+    releaseDate={issue.entry.data.releaseDate}
+    topic={issue.entry.data.topic}
+    summary={issue.entry.data.summary}
+    readMoreHref={readMoreHref}
+    podcastHref={podcastHref}
+    readingTimeMinutes={readingMinutes}
+    nextIssueDate={issue.entry.data.nextIssue?.releaseDate}
+    cover={issue.entry.data.cover}
+    transitionName={`topic-${issue.folder}`}
+  />
+</BaseLayout>

@@ -1,0 +1,23 @@
+/* Each palette sets the cover backdrop + its accent + text tone.
+   Add a new palette by adding a block and an enum value in content.config.ts. */
+
+.palette-warm {
+  --cover-bg: #faf8f4;
+  --cover-text: #1a1a1a;
+  --cover-accent: #8a3a1f;
+}
+.palette-cool {
+  --cover-bg: #e8ecef;
+  --cover-text: #1a1a1a;
+  --cover-accent: #0f4c5c;
+}
+.palette-mono {
+  --cover-bg: #0e0e0e;
+  --cover-text: #f4f1ea;
+  --cover-accent: #f4f1ea;
+}
+.palette-ink {
+  --cover-bg: #0b1b2b;
+  --cover-text: #f4f1ea;
+  --cover-accent: #d9a74a;
+}

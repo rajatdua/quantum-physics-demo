@@ -1,0 +1,93 @@
+---
+import { t, formatDanishMonthYear, formatDanishDate } from '../i18n';
+
+interface Props {
+  palette: 'warm' | 'cool' | 'mono' | 'ink';
+  number: number;
+  releaseDate: string;
+  topic: string;
+  summary: string;
+  readMoreHref: string;
+  podcastHref: string;
+  readingTimeMinutes?: number;
+  nextIssueDate?: string;
+  image: string;
+  alt: string;
+  credit?: string;
+  transitionName?: string;
+}
+
+const {
+  palette, number, releaseDate, topic, summary,
+  readMoreHref, podcastHref, readingTimeMinutes, nextIssueDate,
+  image, alt, credit, transitionName
+} = Astro.props;
+
+const monthYear = formatDanishMonthYear(releaseDate);
+const eyebrow = t('da', 'cover.issueEyebrow', {
+  number,
+  month: monthYear.split(' ')[0],
+  year: monthYear.split(' ')[1]
+});
+const nextText = nextIssueDate ? t('da', 'cover.nextIssue', { date: formatDanishDate(nextIssueDate) }) : null;
+const readingText = readingTimeMinutes ? t('da', 'cover.readingTime', { minutes: readingTimeMinutes }) : null;
+---
+<section class:list={['cover', 'cover--illustrated', `palette-${palette}`]}>
+  <div class="cover__grid">
+    <div class="cover__text">
+      <div class="cover__eyebrow">{eyebrow}</div>
+      {transitionName ? (
+        <h1 class="cover__topic" transition:name={transitionName}>{topic}</h1>
+      ) : (
+        <h1 class="cover__topic">{topic}</h1>
+      )}
+      <p class="cover__summary">{summary}</p>
+      <div class="cover__cta">
+        <a class="cover__btn cover__btn--primary" href={readMoreHref} data-testid="read-more">{t('da', 'cover.readMore')}</a>
+        <a class="cover__btn cover__btn--secondary" href={podcastHref} target="_blank" rel="noopener">{t('da', 'cover.listenPodcast')}</a>
+      </div>
+    </div>
+    <figure class="cover__illustration">
+      <img src={image} alt={alt} loading="eager" />
+      {credit && <figcaption>{credit}</figcaption>}
+    </figure>
+  </div>
+  <footer class="cover__footer cover__footer--illustrated">
+    {readingText && <span>{readingText}</span>}
+    {nextText && <span class="cover__next">{nextText}</span>}
+  </footer>
+</section>
+
+<style>
+  .cover--illustrated { padding: 0; }
+  .cover__grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    max-width: var(--page-max);
+    margin: 0 auto;
+  }
+  .cover__text { padding: var(--space-7) var(--space-6); }
+  .cover__illustration { margin: 0; background: var(--color-surface); }
+  .cover__illustration img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .cover__illustration figcaption {
+    font-family: var(--font-mono);
+    font-size: var(--size-step--2);
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-text-muted);
+  }
+  .cover__footer--illustrated {
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: var(--space-3) var(--space-6);
+  }
+  @media (max-width: 720px) {
+    .cover__grid { grid-template-columns: 1fr; }
+    .cover__illustration img { aspect-ratio: 3/2; }
+    .cover__text { padding: var(--space-6) var(--space-4); }
+    .cover__footer--illustrated { padding: var(--space-3) var(--space-4); }
+  }
+</style>

@@ -1,0 +1,29 @@
+---
+import { t, formatDanishMonthYear } from '../i18n';
+
+interface Props {
+  previous?: { folder: string; releaseDate: string };
+  next?: { folder: string; releaseDate: string };
+  level: string;
+}
+
+const { previous, next, level } = Astro.props;
+
+function href(folder: string) {
+  return `/${folder.replace('-', '/')}/${level}/`;
+}
+---
+<nav class="issue-nav" aria-label="Udgavenavigation">
+  {previous ? (
+    <a class="issue-nav__link issue-nav__link--prev" href={href(previous.folder)}>
+      <span class="issue-nav__label">← {t('da', 'reading.previousIssue')}</span>
+      <span class="issue-nav__month">{formatDanishMonthYear(previous.releaseDate)}</span>
+    </a>
+  ) : <span />}
+  {next ? (
+    <a class="issue-nav__link issue-nav__link--next" href={href(next.folder)}>
+      <span class="issue-nav__label">{t('da', 'reading.nextIssue')} →</span>
+      <span class="issue-nav__month">{formatDanishMonthYear(next.releaseDate)}</span>
+    </a>
+  ) : <span />}
+</nav>

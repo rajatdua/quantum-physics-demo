@@ -1,0 +1,26 @@
+---
+import { t, formatDanishMonthYear } from '../i18n';
+import type { NumberedIssue } from '../lib/issue-numbering';
+
+interface Props {
+  issue: NumberedIssue & { topic: string; palette: string; summary: string };
+  isPublished: boolean;
+}
+
+const { issue, isPublished } = Astro.props;
+const monthYear = formatDanishMonthYear(issue.releaseDate);
+const eyebrow = `#${issue.number} · ${monthYear.toUpperCase()}`;
+const href = `/${issue.folder.replace('-', '/')}/`;
+---
+{isPublished ? (
+  <a class:list={['archive-card', `palette-${issue.palette}`]} href={href} data-testid="archive-card-published">
+    <div class="archive-card__eyebrow">{eyebrow}</div>
+    <div class="archive-card__topic">{issue.topic}</div>
+    <div class="archive-card__summary">{issue.summary}</div>
+  </a>
+) : (
+  <div class="archive-card archive-card--pending" data-testid="archive-card-pending">
+    <div class="archive-card__eyebrow">{eyebrow}</div>
+    <div class="archive-card__topic">{t('da', 'archive.comingSoon')}</div>
+  </div>
+)}

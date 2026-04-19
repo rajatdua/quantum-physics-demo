@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import { t } from '../i18n';
+
+const title = t('da', 'nav.about');
+---
+<BaseLayout title={title}>
+  <SiteHeader slot="header" />
+  <article class="reading">
+    <div class="reading__eyebrow">OM</div>
+    <h1 class="reading__title">Om projektet</h1>
+    <div class="reading__prose">
+      <p><em>[DA: Forfatteren — udskift dette afsnit med projektets motivation og en kort bio.]</em></p>
+      <p><em>[DA: Link til Spotify-showet.]</em></p>
+    </div>
+  </article>
+</BaseLayout>

@@ -1,0 +1,301 @@
+---
+// QuantumField — a backdrop of softly flickering dots representing
+// particles in superposition. Pure canvas, no library, ~3KB script.
+//
+// Three visual moves:
+//   1. Calm flickering modulation per dot (alpha + size).
+//   2. "Constellation" — bright neighbouring dots get a thin connector line.
+//   3. "Cursor as observer" — dots near the pointer brighten and gently lean
+//      toward it. The field reacts to being observed, exactly the way a
+//      quantum system might. Honors prefers-reduced-motion.
+//
+// Re-initializes on Astro view transitions via astro:page-load.
+---
+<canvas class="quantum-field" data-quantum-field aria-hidden="true"></canvas>
+
+<style>
+  .quantum-field {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+    -webkit-mask-image: linear-gradient(to right,
+      rgba(0,0,0,0.15) 0%,
+      rgba(0,0,0,0.55) 35%,
+      black 70%);
+            mask-image: linear-gradient(to right,
+      rgba(0,0,0,0.15) 0%,
+      rgba(0,0,0,0.55) 35%,
+      black 70%);
+  }
+  @media (max-width: 720px) {
+    .quantum-field {
+      opacity: 0.32;
+      -webkit-mask-image: linear-gradient(to bottom,
+        transparent 0%,
+        rgba(0,0,0,0.4) 50%,
+        black 100%);
+              mask-image: linear-gradient(to bottom,
+        transparent 0%,
+        rgba(0,0,0,0.4) 50%,
+        black 100%);
+    }
+  }
+</style>
+
+<script>
+  type Dot = {
+    x: number;
+    y: number;
+    phase: number;
+    freq: number;
+    baseR: number;
+    drift: number;
+  };
+
+  type FieldHandle = { stop: () => void };
+
+  const NEIGHBOUR_RADIUS = 60;       // px — max distance for a constellation line
+  const POINTER_RADIUS = 130;        // px — how close before the cursor "observes"
+  const POINTER_LERP = 0.12;         // how fast the visible cursor pos eases to actual
+
+  function init(canvas: HTMLCanvasElement): FieldHandle {
+    const maybeCtx = canvas.getContext('2d');
+    if (!maybeCtx) return { stop: () => {} };
+    const ctx: CanvasRenderingContext2D = maybeCtx;
+
+    const dots: Dot[] = [];
+    let pairs: Array<[number, number]> = []; // index pairs of nearby dots
+    const dpr = window.devicePixelRatio || 1;
+    let rafId = 0;
+    let start = performance.now();
+
+    // Pointer state in canvas-local coords. -1 means "not on the field".
+    const pointer = { tx: -1, ty: -1, x: -1, y: -1, active: false };
+
+    function setup(): void {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      dots.length = 0;
+      const targetSpacing = 38;
+      const cols = Math.max(6, Math.floor(rect.width / targetSpacing));
+      const rows = Math.max(3, Math.floor(rect.height / targetSpacing));
+      const stepX = rect.width / cols;
+      const stepY = rect.height / rows;
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          dots.push({
+            x: (i + 0.5) * stepX + (Math.random() - 0.5) * stepX * 0.6,
+            y: (j + 0.5) * stepY + (Math.random() - 0.5) * stepY * 0.6,
+            phase: Math.random() * Math.PI * 2,
+            freq: 0.5 + Math.random() * 1.0,
+            baseR: 1.6 + Math.random() * 1.8,
+            drift: (Math.random() - 0.5)
+          });
+        }
+      }
+
+      // Pre-compute neighbour pairs once so the per-frame cost is just a
+      // small loop, not O(n²) every frame.
+      pairs = [];
+      const r2 = NEIGHBOUR_RADIUS * NEIGHBOUR_RADIUS;
+      for (let a = 0; a < dots.length; a++) {
+        const da = dots[a];
+        for (let b = a + 1; b < dots.length; b++) {
+          const db = dots[b];
+          const dx = da.x - db.x;
+          const dy = da.y - db.y;
+          if (dx * dx + dy * dy < r2) pairs.push([a, b]);
+        }
+      }
+    }
+
+    function readColor(): string {
+      const fromVar = getComputedStyle(canvas).getPropertyValue('--quantum-dot-color').trim();
+      return fromVar || 'currentColor';
+    }
+
+    function drawStatic(): void {
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = readColor();
+      for (const d of dots) {
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.baseR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function frame(now: number): void {
+      const t = (now - start) / 1000;
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      // Smooth the pointer position toward its actual location for a soft
+      // "magnetic" feel — never snaps.
+      if (pointer.active) {
+        pointer.x = pointer.x < 0 ? pointer.tx : pointer.x + (pointer.tx - pointer.x) * POINTER_LERP;
+        pointer.y = pointer.y < 0 ? pointer.ty : pointer.y + (pointer.ty - pointer.y) * POINTER_LERP;
+      }
+
+      const color = readColor();
+
+      // First pass: pre-compute brightness, position, radius for each dot.
+      const renderedR = new Array<number>(dots.length);
+      const renderedAlpha = new Array<number>(dots.length);
+      const renderedX = new Array<number>(dots.length);
+      const renderedY = new Array<number>(dots.length);
+
+      const pr2 = POINTER_RADIUS * POINTER_RADIUS;
+
+      for (let i = 0; i < dots.length; i++) {
+        const d = dots[i];
+        const m = 0.5 + 0.5 * Math.sin(t * d.freq + d.phase);
+        // Slow drift
+        const dy = Math.sin(t * 0.35 + d.phase) * 8 * d.drift;
+        const dx = Math.cos(t * 0.28 + d.phase) * 6 * d.drift;
+        let x = d.x + dx;
+        let y = d.y + dy;
+        let alpha = 0.1 + 0.4 * m;
+        let radius = d.baseR * (0.5 + 0.7 * m);
+
+        // Cursor-as-observer: nearby dots brighten and lean toward the cursor.
+        if (pointer.active && pointer.x >= 0) {
+          const px = pointer.x - x;
+          const py = pointer.y - y;
+          const dist2 = px * px + py * py;
+          if (dist2 < pr2) {
+            const proximity = 1 - Math.sqrt(dist2) / POINTER_RADIUS;
+            alpha = Math.min(0.95, alpha + 0.55 * proximity);
+            radius = radius * (1 + 0.6 * proximity);
+            x += px * 0.18 * proximity;
+            y += py * 0.18 * proximity;
+          }
+        }
+
+        renderedX[i] = x;
+        renderedY[i] = y;
+        renderedR[i] = radius;
+        renderedAlpha[i] = alpha;
+      }
+
+      // Second pass: constellation lines between bright-ish neighbours.
+      // Lines visualize "moments of coincidence" between flickering particles.
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      for (const [a, b] of pairs) {
+        const aA = renderedAlpha[a];
+        const bA = renderedAlpha[b];
+        if (aA < 0.22 || bA < 0.22) continue;
+        const xa = renderedX[a];
+        const ya = renderedY[a];
+        const xb = renderedX[b];
+        const yb = renderedY[b];
+        const dx = xa - xb;
+        const dy = ya - yb;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const distFactor = 1 - dist / NEIGHBOUR_RADIUS;
+        // Strong multiplier + cap so constellation lines are clearly visible
+        // even with the 0.5 canvas opacity. Caps at ~55% line alpha.
+        const lineAlpha = Math.min(0.6, (aA - 0.18) * (bA - 0.18) * distFactor * 2.4);
+        if (lineAlpha <= 0.01) continue;
+        ctx.globalAlpha = lineAlpha;
+        ctx.beginPath();
+        ctx.moveTo(xa, ya);
+        ctx.lineTo(xb, yb);
+        ctx.stroke();
+      }
+
+      // Third pass: draw the dots themselves on top of the lines.
+      ctx.fillStyle = color;
+      for (let i = 0; i < dots.length; i++) {
+        ctx.globalAlpha = renderedAlpha[i];
+        ctx.beginPath();
+        ctx.arc(renderedX[i], renderedY[i], renderedR[i], 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      rafId = requestAnimationFrame(frame);
+    }
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    function startAnimation(): void {
+      cancelAnimationFrame(rafId);
+      start = performance.now();
+      if (reduced.matches) {
+        drawStatic();
+      } else {
+        rafId = requestAnimationFrame(frame);
+      }
+    }
+
+    setup();
+    startAnimation();
+
+    // The canvas has pointer-events: none (so it never blocks clicks).
+    // We listen on window instead and convert global coords to canvas-local.
+    const onPointerMove = (e: PointerEvent) => {
+      if (reduced.matches) return;
+      const rect = canvas.getBoundingClientRect();
+      const inside =
+        e.clientX >= rect.left && e.clientX <= rect.right &&
+        e.clientY >= rect.top && e.clientY <= rect.bottom;
+      if (inside) {
+        pointer.active = true;
+        pointer.tx = e.clientX - rect.left;
+        pointer.ty = e.clientY - rect.top;
+      } else {
+        pointer.active = false;
+      }
+    };
+    const onPointerLeaveWindow = () => { pointer.active = false; };
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerleave', onPointerLeaveWindow);
+    window.addEventListener('blur', onPointerLeaveWindow);
+
+    let resizeTimer = 0;
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        setup();
+        startAnimation();
+      }, 200);
+    };
+    window.addEventListener('resize', onResize);
+
+    const onMotionChange = () => startAnimation();
+    reduced.addEventListener?.('change', onMotionChange);
+
+    return {
+      stop: () => {
+        cancelAnimationFrame(rafId);
+        window.removeEventListener('resize', onResize);
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerleave', onPointerLeaveWindow);
+        window.removeEventListener('blur', onPointerLeaveWindow);
+        reduced.removeEventListener?.('change', onMotionChange);
+      }
+    };
+  }
+
+  let active: FieldHandle[] = [];
+
+  function bootAll(): void {
+    for (const h of active) h.stop();
+    active = [];
+    document.querySelectorAll<HTMLCanvasElement>('[data-quantum-field]').forEach((c) => {
+      active.push(init(c));
+    });
+  }
+
+  bootAll();
+  document.addEventListener('astro:page-load', bootAll);
+</script>

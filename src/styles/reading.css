@@ -1,0 +1,340 @@
+.reading {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5);
+}
+.reading__eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--size-step--1);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: var(--space-3);
+}
+.reading__title {
+  font-size: var(--size-step-4);
+  font-weight: 400;
+  margin: 0 0 var(--space-5) 0;
+}
+.reading__prose {
+  font-size: var(--size-step-1);
+  line-height: 1.7;
+}
+.reading__prose > p:first-of-type::first-letter {
+  font-weight: 700;
+  font-size: 3.2em;
+  float: left;
+  line-height: 0.9;
+  padding: 0.05em 0.08em 0 0;
+}
+.reading__prose h2 { margin-top: var(--space-6); }
+.reading__prose img { border-radius: var(--radius-sm); margin: var(--space-4) 0; }
+
+.issue-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+.issue-nav__link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  text-decoration: none;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.issue-nav__link:hover { border-color: var(--color-accent); }
+.issue-nav__link--next { text-align: right; }
+.issue-nav__label {
+  font-family: var(--font-mono);
+  font-size: var(--size-step--2);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.issue-nav__month { font-size: var(--size-step-0); }
+@media (max-width: 480px) {
+  .reading { padding: var(--space-5) var(--space-4); }
+  .reading__title { font-size: var(--size-step-3); }
+  .reading__prose { font-size: var(--size-step-0); }
+}
+
+/* ── 1.1 Reading progress rule ──
+   A 1px ink rule at the top of the article fills left-to-right as the
+   reader scrolls. A faint hairline marker shows where the podcast lives.
+   Pure CSS via scroll-driven animation; degrades to a flat rule when
+   `animation-timeline` is unsupported. */
+
+.reading__progress {
+  position: sticky;
+  top: 0;
+  height: 1px;
+  margin: 0 0 var(--space-5) 0;
+  background: var(--color-border);
+  overflow: visible;
+}
+.reading__progress-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--color-text);
+  transform-origin: left center;
+}
+.reading__progress-podcast-mark {
+  position: absolute;
+  top: 0;
+  height: 5px;
+  width: 1px;
+  background: var(--color-text);
+  opacity: 0.25;
+  transform: translateY(-2px);
+}
+@supports (animation-timeline: scroll()) {
+  .reading__progress-fill {
+    animation: reading-progress linear both;
+    animation-timeline: scroll(root block);
+    width: 100%;
+    transform: scaleX(0);
+  }
+  @keyframes reading-progress {
+    to { transform: scaleX(1); }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reading__progress-fill {
+    animation: none;
+    transform: scaleX(0);
+  }
+}
+
+/* ── 1.7 Collapsible derivations ──
+   <details><summary>Vis udledning</summary>$$…$$</details>
+   Default-collapsed on Universitet, default-open on Kandidat (set via the
+   `open` attribute in Markdown). */
+
+.reading__prose details {
+  margin: var(--space-5) 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+}
+.reading__prose summary {
+  font-family: var(--font-mono);
+  font-size: var(--size-step--1);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  list-style: none;
+}
+.reading__prose summary::-webkit-details-marker { display: none; }
+.reading__prose summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 160ms ease;
+}
+.reading__prose details[open] summary::before {
+  transform: rotate(90deg);
+}
+.reading__prose details[open] summary {
+  margin-bottom: var(--space-3);
+  border-bottom: 1px dashed var(--color-border);
+  padding-bottom: var(--space-2);
+}
+
+/* ── 1.8 Wave-function ripple ──
+   A single one-shot CSS animation when the first occurrence of
+   `bølgefunktion` is wrapped as <span class="ripple">…</span>. The
+   pseudo-element draws two sinusoidal cycles in the left margin, then
+   stops forever. Suppressed under prefers-reduced-motion. */
+
+.reading__prose .ripple {
+  position: relative;
+  font-style: italic;
+}
+.reading__prose .ripple::before {
+  content: "";
+  position: absolute;
+  left: -1.4em;
+  top: 50%;
+  width: 1em;
+  height: 0.7em;
+  margin-top: -0.35em;
+  background:
+    radial-gradient(circle at 0% 50%, transparent 0.18em, var(--color-accent) 0.18em 0.22em, transparent 0.22em),
+    radial-gradient(circle at 50% 50%, transparent 0.18em, var(--color-accent) 0.18em 0.22em, transparent 0.22em),
+    radial-gradient(circle at 100% 50%, transparent 0.18em, var(--color-accent) 0.18em 0.22em, transparent 0.22em);
+  background-repeat: no-repeat;
+  background-size: 0.45em 0.45em, 0.45em 0.45em, 0.45em 0.45em;
+  background-position: -0.45em center, 0 center, 0.45em center;
+  opacity: 0;
+  animation: ripple-once 1.2s ease-out 0.4s forwards;
+}
+@keyframes ripple-once {
+  0%   { opacity: 0;   background-position: 0 center, 0.45em center, 0.9em center; }
+  20%  { opacity: 0.9; }
+  100% { opacity: 0;   background-position: -0.9em center, -0.45em center, 0 center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reading__prose .ripple::before { animation: none; opacity: 0; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Reading-page enhancements (B + C + D + E)
+   ────────────────────────────────────────────────────────────────── */
+
+/* B1. Section dividers — a tiny ψ glyph centered above each H2.
+   The first H2 (right after the lead paragraph) skips the divider.
+   Uses adjacent-sibling selector so dividers only appear between sections. */
+
+.reading__prose h2 {
+  position: relative;
+  padding-top: var(--space-7);
+  margin-top: var(--space-7);
+  text-align: left;
+  font-weight: 700;
+}
+.reading__prose h2::before {
+  content: "ψ";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: var(--color-accent);
+  opacity: 0.6;
+  letter-spacing: 0;
+}
+.reading__prose > h2:first-of-type::before { content: none; }
+
+/* B2. Heading underline that draws in left-to-right when scrolled into view.
+   A 2px high accent rule grows from 0 to 100% width over 600ms. */
+
+.reading__prose h2,
+.reading__prose h3 {
+  position: relative;
+}
+.reading__prose h2::after,
+.reading__prose h3::after {
+  content: "";
+  display: block;
+  height: 2px;
+  width: 0;
+  margin-top: var(--space-2);
+  background: var(--color-accent);
+  transition: width 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.reading__prose h2.in-view::after { width: 3rem; }
+.reading__prose h3.in-view::after { width: 2rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reading__prose h2::after,
+  .reading__prose h3::after { transition: none; width: 3rem; }
+}
+
+/* C. Paragraph fade-up on scroll-into-view.
+   IntersectionObserver adds .in-view; CSS animates via transition. */
+
+.reading__prose > p {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 520ms ease-out, transform 520ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.reading__prose > p.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* The first paragraph is always immediately visible (above-the-fold,
+   contains the drop cap — should never delay). */
+.reading__prose > p:first-of-type {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reading__prose > p {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* D. Marginalia — pulled-out sentences in serif italic.
+   Author writes:
+     <aside class="marginalia">"Quoted sentence."</aside>
+   Renders as an inline pull-quote with a left rule, sized to fit the
+   reading column comfortably. */
+
+.reading__prose .marginalia {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--size-step-2);
+  line-height: 1.4;
+  color: var(--color-text);
+  border-left: 2px solid var(--color-accent);
+  padding: var(--space-2) 0 var(--space-2) var(--space-4);
+  margin: var(--space-5) 0;
+  max-width: 100%;
+}
+
+/* E. Symbol tooltips — author wraps a math glyph or term to add a hover
+   explanation:
+     <span class="symbol" data-symbol="α er amplituden for tilstand |0⟩">α</span>
+   Pure CSS hover; no JS. */
+
+.reading__prose .symbol {
+  position: relative;
+  border-bottom: 1px dotted var(--color-accent);
+  cursor: help;
+}
+.reading__prose .symbol::after {
+  content: attr(data-symbol);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  font-family: var(--font-sans);
+  font-size: var(--size-step--1);
+  font-style: normal;
+  white-space: normal;
+  width: max-content;
+  max-width: 18rem;
+  background: var(--color-text);
+  color: var(--color-bg);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+  z-index: 5;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+.reading__prose .symbol::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 2px);
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--color-text);
+  opacity: 0;
+  transition: opacity 160ms ease;
+  pointer-events: none;
+  z-index: 5;
+}
+.reading__prose .symbol:hover::after,
+.reading__prose .symbol:focus-visible::after,
+.reading__prose .symbol:hover::before,
+.reading__prose .symbol:focus-visible::before {
+  opacity: 1;
+}

@@ -1,0 +1,213 @@
+.cover {
+  position: relative;
+  background: var(--cover-bg);
+  color: var(--cover-text);
+  padding: clamp(var(--space-7), 8vw, var(--space-8)) var(--space-6) var(--space-7);
+  border-bottom: 1px solid var(--color-border);
+  overflow: hidden;
+  /* Pass the palette accent into QuantumField as the dot color */
+  --quantum-dot-color: var(--cover-accent);
+  min-height: clamp(420px, 60vh, 720px);
+  display: flex;
+  align-items: center;
+}
+.cover__body {
+  position: relative;
+  z-index: 2;
+  max-width: var(--page-max);
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Faint oversized glyph behind the title — the magazine's editorial signature */
+.cover__ghost-glyph {
+  position: absolute;
+  top: 50%;
+  right: clamp(-2rem, -3vw, 1rem);
+  transform: translateY(-50%);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(12rem, 28vw, 26rem);
+  line-height: 0.85;
+  color: var(--cover-text);
+  opacity: 0.06;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
+.cover__eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--size-step--1);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--cover-accent);
+  margin-bottom: var(--space-4);
+}
+
+.cover__topic {
+  font-size: clamp(2.75rem, 9vw, 6.5rem);
+  line-height: 0.96;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  max-width: 14ch;
+  margin: 0 0 var(--space-5) 0;
+  color: var(--cover-text);
+}
+
+.cover__summary {
+  max-width: 46ch;
+  font-size: clamp(1rem, 1.6vw, 1.25rem);
+  line-height: 1.45;
+  color: var(--cover-text);
+  opacity: 0.82;
+  margin: 0 0 var(--space-6) 0;
+}
+
+.cover__cta {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-7);
+}
+
+.cover__btn {
+  position: relative;
+  display: inline-block;
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-sans);
+  font-size: var(--size-step-0);
+  text-decoration: none;
+  border: 1px solid var(--cover-text);
+  border-radius: var(--radius-sm);
+  color: var(--cover-text);
+  background: transparent;
+  transition: background-color 200ms ease, color 200ms ease, transform 160ms ease;
+}
+.cover__btn--primary {
+  background: var(--cover-text);
+  color: var(--cover-bg);
+}
+.cover__btn--primary:hover {
+  transform: translateY(-1px);
+  background: var(--cover-accent);
+  border-color: var(--cover-accent);
+  color: var(--cover-bg);
+}
+.cover__btn--secondary::after {
+  content: "";
+  position: absolute;
+  left: var(--space-5);
+  right: var(--space-5);
+  bottom: calc(var(--space-3) - 4px);
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.cover__btn--secondary:hover::after {
+  transform: scaleX(1);
+}
+
+.cover__footer {
+  font-family: var(--font-mono);
+  font-size: var(--size-step--2);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--cover-text);
+  opacity: 0.7;
+  display: flex;
+  gap: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--cover-text);
+  border-top-color: color-mix(in srgb, var(--cover-text) 20%, transparent);
+}
+.cover__next { margin-left: auto; }
+
+@media (max-width: 640px) {
+  .cover { padding: var(--space-6) var(--space-4); min-height: 480px; }
+  .cover__topic { font-size: clamp(2.25rem, 11vw, 3.5rem); }
+  .cover__cta { flex-direction: column; }
+  .cover__btn { text-align: center; }
+  .cover__btn--secondary::after {
+    left: var(--space-4);
+    right: var(--space-4);
+  }
+  .cover__ghost-glyph { font-size: 18rem; right: -3rem; opacity: 0.05; }
+}
+
+/* ── Cover entrance choreography ──
+   Each element appears in turn over the first ~600ms after page load.
+   Suppressed under prefers-reduced-motion. */
+
+@media (prefers-reduced-motion: no-preference) {
+  .cover__eyebrow,
+  .cover__topic,
+  .cover__summary,
+  .cover__cta,
+  .cover__footer,
+  .quantum-field,
+  .cover__ghost-glyph {
+    opacity: 0;
+    animation: cover-enter 540ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  .cover__eyebrow {
+    letter-spacing: 0.6em;
+    animation:
+      cover-enter 540ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards,
+      eyebrow-tighten 700ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  .cover__topic {
+    transform: translateY(14px);
+    animation:
+      cover-enter 600ms cubic-bezier(0.2, 0.7, 0.2, 1) 80ms forwards,
+      cover-rise 600ms cubic-bezier(0.2, 0.7, 0.2, 1) 80ms forwards;
+  }
+  .cover__summary { animation-delay: 220ms; }
+  .cover__cta     { animation-delay: 320ms; }
+  .cover__footer  { animation-delay: 420ms; }
+  .quantum-field  { animation-duration: 900ms; animation-delay: 120ms; }
+  .cover__ghost-glyph {
+    transform: translateY(-50%) scale(1.06);
+    animation:
+      ghost-glyph-enter 1200ms cubic-bezier(0.2, 0.7, 0.2, 1) 60ms forwards;
+  }
+}
+
+@keyframes cover-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes cover-rise {
+  from { transform: translateY(14px); }
+  to   { transform: translateY(0); }
+}
+@keyframes eyebrow-tighten {
+  from { letter-spacing: 0.6em; }
+  to   { letter-spacing: 0.22em; }
+}
+@keyframes ghost-glyph-enter {
+  from { opacity: 0; transform: translateY(-50%) scale(1.06); }
+  to   { opacity: 0.06; transform: translateY(-50%) scale(1); }
+}
+
+/* The .quantum-field and .cover__ghost-glyph have their own opacity targets
+   in CSS (0.5 and 0.06 respectively); the cover-enter keyframe ends at
+   opacity:1, which would over-saturate them. Override the end-state. */
+@media (prefers-reduced-motion: no-preference) {
+  .quantum-field {
+    animation-name: quantum-fade-in;
+  }
+  @keyframes quantum-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 0.5; }
+  }
+  @media (max-width: 720px) {
+    .quantum-field { animation-name: quantum-fade-in-mobile; }
+    @keyframes quantum-fade-in-mobile {
+      from { opacity: 0; }
+      to   { opacity: 0.32; }
+    }
+  }
+}

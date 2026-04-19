@@ -1,0 +1,33 @@
+---
+import '../styles/global.css';
+import { ClientRouter } from 'astro:transitions';
+import { t } from '../i18n';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const siteTitle = t('da', 'site.tagline');
+const fullTitle = title === siteTitle ? title : `${title} · ${siteTitle}`;
+---
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
+    <meta property="og:title" content={fullTitle} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:type" content="website" />
+    <ClientRouter />
+  </head>
+  <body>
+    <slot name="header" />
+    <slot />
+  </body>
+</html>

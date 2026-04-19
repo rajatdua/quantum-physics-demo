@@ -1,0 +1,54 @@
+---
+import { t, formatDanishMonthYear, formatDanishDate } from '../i18n';
+import QuantumField from './QuantumField.astro';
+
+interface Props {
+  palette: 'warm' | 'cool' | 'mono' | 'ink';
+  number: number;
+  releaseDate: string;
+  topic: string;
+  summary: string;
+  readMoreHref: string;
+  podcastHref: string;
+  readingTimeMinutes?: number;
+  nextIssueDate?: string;
+  transitionName?: string;
+  ghostGlyph?: string;
+}
+
+const {
+  palette, number, releaseDate, topic, summary,
+  readMoreHref, podcastHref, readingTimeMinutes, nextIssueDate,
+  transitionName, ghostGlyph = 'ψ'
+} = Astro.props;
+
+const monthYear = formatDanishMonthYear(releaseDate);
+const eyebrow = t('da', 'cover.issueEyebrow', {
+  number,
+  month: monthYear.split(' ')[0],
+  year: monthYear.split(' ')[1]
+});
+const nextText = nextIssueDate ? t('da', 'cover.nextIssue', { date: formatDanishDate(nextIssueDate) }) : null;
+const readingText = readingTimeMinutes ? t('da', 'cover.readingTime', { minutes: readingTimeMinutes }) : null;
+---
+<section class:list={['cover', 'cover--typographic', `palette-${palette}`]}>
+  <QuantumField />
+  <span class="cover__ghost-glyph" aria-hidden="true">{ghostGlyph}</span>
+  <div class="cover__body">
+    <div class="cover__eyebrow">{eyebrow}</div>
+    {transitionName ? (
+      <h1 class="cover__topic" transition:name={transitionName}>{topic}</h1>
+    ) : (
+      <h1 class="cover__topic">{topic}</h1>
+    )}
+    <p class="cover__summary">{summary}</p>
+    <div class="cover__cta">
+      <a class="cover__btn cover__btn--primary" href={readMoreHref} data-testid="read-more">{t('da', 'cover.readMore')}</a>
+      <a class="cover__btn cover__btn--secondary" href={podcastHref} target="_blank" rel="noopener">{t('da', 'cover.listenPodcast')}</a>
+    </div>
+    <footer class="cover__footer">
+      {readingText && <span>{readingText}</span>}
+      {nextText && <span class="cover__next">{nextText}</span>}
+    </footer>
+  </div>
+</section>

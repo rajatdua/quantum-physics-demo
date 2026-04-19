@@ -1,0 +1,25 @@
+---
+import TypographicCover from './TypographicCover.astro';
+import IllustratedCover from './IllustratedCover.astro';
+
+interface Props {
+  palette: 'warm' | 'cool' | 'mono' | 'ink';
+  number: number;
+  releaseDate: string;
+  topic: string;
+  summary: string;
+  readMoreHref: string;
+  podcastHref: string;
+  readingTimeMinutes?: number;
+  nextIssueDate?: string;
+  cover?: { image: string; alt: string; credit?: string };
+  transitionName?: string;
+}
+
+const props = Astro.props;
+---
+{props.cover ? (
+  <IllustratedCover {...props} image={props.cover.image} alt={props.cover.alt} credit={props.cover.credit} />
+) : (
+  <TypographicCover {...props} />
+)}

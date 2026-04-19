@@ -1,0 +1,42 @@
+@import "@fontsource/newsreader/400.css";
+@import "@fontsource/newsreader/400-italic.css";
+@import "@fontsource/newsreader/700.css";
+
+html {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  line-height: var(--line-body);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  line-height: var(--line-heading);
+  font-weight: 700;
+  margin: 0 0 var(--space-4) 0;
+}
+h1 { font-size: var(--size-step-5); font-weight: 400; }
+h2 { font-size: var(--size-step-3); }
+h3 { font-size: var(--size-step-2); }
+
+p {
+  margin: 0 0 var(--space-4) 0;
+  max-width: var(--content-max);
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--size-step--1);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: var(--space-2);
+}

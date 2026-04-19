@@ -1,0 +1,19 @@
+name: Scheduled rebuild
+
+on:
+  schedule:
+    # 07:00 Europe/Copenhagen = 05:00 UTC (CET) / 05:00 UTC (CEST shifts to 05:00 UTC — same trigger; CF redeploys daily regardless)
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  trigger-pages-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Cloudflare Pages deploy hook
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_PAGES_DEPLOY_HOOK }}" ]; then
+            echo "CLOUDFLARE_PAGES_DEPLOY_HOOK secret is not configured. Skipping."
+            exit 0
+          fi
+          curl -X POST "${{ secrets.CLOUDFLARE_PAGES_DEPLOY_HOOK }}"

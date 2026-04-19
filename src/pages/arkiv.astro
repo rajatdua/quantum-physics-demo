@@ -1,0 +1,35 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import ArchiveCard from '../components/ArchiveCard.astro';
+import { getIssuesNumbered } from '../lib/issues';
+import { t } from '../i18n';
+
+const numbered = await getIssuesNumbered();
+const todayIso = new Date().toISOString().slice(0, 10);
+const sorted = [...numbered].sort((a, b) =>
+  b.entry.data.releaseDate.localeCompare(a.entry.data.releaseDate)
+);
+---
+<BaseLayout title={t('da', 'archive.heading')} description={t('da', 'archive.subtitle')}>
+  <SiteHeader slot="header" />
+  <section class="archive page">
+    <h1 class="archive__heading">{t('da', 'archive.heading')}</h1>
+    <p class="archive__subtitle">{t('da', 'archive.subtitle')}</p>
+    <div class="archive__grid">
+      {sorted.map((i) => (
+        <ArchiveCard
+          issue={{
+            folder: i.folder,
+            releaseDate: i.entry.data.releaseDate,
+            number: i.number,
+            topic: i.entry.data.topic,
+            palette: i.entry.data.palette,
+            summary: i.entry.data.summary
+          }}
+          isPublished={i.entry.data.releaseDate <= todayIso}
+        />
+      ))}
+    </div>
+  </section>
+</BaseLayout>

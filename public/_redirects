@@ -1,0 +1,3 @@
+# Normalize trailing slashes for the top-level paths Astro serves as directories
+/arkiv  /arkiv/  301
+/om     /om/     301

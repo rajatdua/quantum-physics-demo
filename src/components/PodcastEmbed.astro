@@ -1,0 +1,30 @@
+---
+import { t } from '../i18n';
+
+interface Props {
+  episodeId?: string;
+  showUrl?: string;
+}
+
+const { episodeId, showUrl = 'https://open.spotify.com' } = Astro.props;
+---
+<section class="podcast">
+  <div class="podcast__eyebrow">{t('da', 'podcast.heading')}</div>
+  {episodeId ? (
+    <iframe
+      title="Spotify podcast episode"
+      src={`https://open.spotify.com/embed/episode/${episodeId}`}
+      width="100%"
+      height="152"
+      frameborder="0"
+      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+      loading="lazy"
+      data-testid="podcast-embed"
+    ></iframe>
+  ) : (
+    <div class="podcast__pending" data-testid="podcast-pending">
+      <p><strong>{t('da', 'podcast.comingSoonTitle')}</strong></p>
+      <p><a href={showUrl} target="_blank" rel="noopener">{t('da', 'podcast.follow')} →</a></p>
+    </div>
+  )}
+</section>

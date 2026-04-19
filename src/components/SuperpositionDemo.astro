@@ -1,0 +1,356 @@
+---
+// SuperpositionDemo — a tiny interactive illustration of quantum measurement.
+//
+// The particle floats between |0⟩ and |1⟩ as a visual stand-in for superposition.
+// Clicking "Mål" collapses it, randomly, to one of the two eigenstates, updates
+// the running tally, and then re-enters superposition after a short pause.
+//
+// Standalone: no props, no imports. Wiring into a reading template is done
+// elsewhere (the frontmatter `interactive: superposition` check).
+//
+// Honors prefers-reduced-motion: renders the particle stationary at center,
+// "Mål" still works but collapse is a snap with no ripple.
+//
+// Script survives Astro's view transitions via astro:page-load + a dataset
+// bound flag on each root element.
+---
+<section class="sd" data-superposition-demo>
+  <div class="sd__eyebrow">PRØV DET SELV — KVANTEMÅLING</div>
+
+  <svg
+    class="sd__svg"
+    viewBox="0 0 280 180"
+    width="280"
+    height="180"
+    role="img"
+    aria-label="Kvantepartikel i superposition mellem tilstandene |0⟩ og |1⟩"
+    data-sd-svg
+  >
+    <!-- Faint well markers -->
+    <circle class="sd__well" cx="70" cy="90" r="16" />
+    <circle class="sd__well" cx="210" cy="90" r="16" />
+
+    <!-- State labels -->
+    <text class="sd__label" x="70" y="128" text-anchor="middle">|0⟩</text>
+    <text class="sd__label" x="210" y="128" text-anchor="middle">|1⟩</text>
+
+    <!-- Ripple (grows + fades on collapse) -->
+    <circle class="sd__ripple" cx="140" cy="90" r="14" data-sd-ripple />
+
+    <!-- Particle -->
+    <circle class="sd__particle" cx="140" cy="90" r="14" data-sd-particle />
+  </svg>
+
+  <div class="sd__controls">
+    <button type="button" class="sd__btn" data-sd-measure>Mål</button>
+    <span class="sd__tally" data-sd-tally>|0⟩: 0 · |1⟩: 0</span>
+  </div>
+
+  <button type="button" class="sd__reset" data-sd-reset hidden>Nulstil tælling</button>
+</section>
+
+<style>
+  .sd {
+    display: block;
+    margin: var(--space-6) 0;
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+
+  .sd__eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--size-step--2);
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-3);
+  }
+
+  .sd__svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .sd__well {
+    fill: none;
+    stroke: var(--color-border);
+    stroke-width: 1;
+  }
+
+  .sd__label {
+    font-family: var(--font-serif);
+    font-size: var(--size-step--1);
+    fill: var(--color-text-muted);
+  }
+
+  .sd__particle {
+    fill: var(--color-accent);
+  }
+
+  .sd__ripple {
+    fill: none;
+    stroke: var(--color-accent);
+    stroke-width: 1.5;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .sd__controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin-top: var(--space-3);
+  }
+
+  .sd__btn {
+    font-family: var(--font-sans);
+    font-size: var(--size-step-0);
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--color-text);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background-color 160ms ease, color 160ms ease;
+  }
+  .sd__btn:hover,
+  .sd__btn:focus-visible {
+    background: var(--color-text);
+    color: var(--color-surface);
+  }
+  .sd__btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .sd__tally {
+    font-family: var(--font-mono);
+    font-size: var(--size-step--1);
+    color: var(--color-text-muted);
+  }
+
+  .sd__reset {
+    display: inline-block;
+    margin-top: var(--space-3);
+    padding: 0;
+    background: none;
+    border: 0;
+    font-family: var(--font-sans);
+    font-size: var(--size-step--2);
+    color: var(--color-text-muted);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .sd__reset[hidden] {
+    display: none;
+  }
+</style>
+
+<script>
+  // Geometry constants — must match the SVG markup above.
+  const LEFT_X = 70;
+  const RIGHT_X = 210;
+  const CENTER_X = 140;
+  const CENTER_Y = 90;
+  const AMPLITUDE = (RIGHT_X - LEFT_X) / 2; // 70
+  const PERIOD_MS = 1600;
+  const BREATHE_AMPLITUDE = 3.5;
+  const COLLAPSE_MS = 220;
+  const RIPPLE_MS = 600;
+  const RESUME_DELAY_MS = 1500;
+
+  type Phase = 'superposition' | 'collapsing' | 'collapsed';
+
+  interface DemoState {
+    phase: Phase;
+    tallyZero: number;
+    tallyOne: number;
+    rafId: number;
+    startedAt: number;
+    // For smooth collapse animation from current oscillation pos to a well.
+    collapseFrom: number;
+    collapseTarget: number;
+    collapseStart: number;
+    rippleStart: number;
+    resumeTimer: number;
+  }
+
+  function easeCollapse(t: number): number {
+    // cubic-bezier(0.5, 0, 0.4, 1) — monotone approximation via sampling
+    // would be heavier than we need; use a close analytic ease-out-ish curve.
+    // This matches the perceptual profile (slow-in, strong-out) closely
+    // enough for a 220ms move.
+    return 1 - Math.pow(1 - t, 2.2);
+  }
+
+  function formatTally(zero: number, one: number): string {
+    return `|0⟩: ${zero} · |1⟩: ${one}`;
+  }
+
+  function wire(root: HTMLElement): void {
+    const svgEl = root.querySelector<SVGSVGElement>('[data-sd-svg]');
+    const particleEl = root.querySelector<SVGCircleElement>('[data-sd-particle]');
+    const rippleEl = root.querySelector<SVGCircleElement>('[data-sd-ripple]');
+    const measureEl = root.querySelector<HTMLButtonElement>('[data-sd-measure]');
+    const tallyTarget = root.querySelector<HTMLElement>('[data-sd-tally]');
+    const resetEl = root.querySelector<HTMLButtonElement>('[data-sd-reset]');
+
+    if (!svgEl || !particleEl || !rippleEl || !measureEl || !tallyTarget || !resetEl) return;
+
+    // Narrowed, non-nullable bindings — no `!` needed in nested closures.
+    const svg: SVGSVGElement = svgEl;
+    const particle: SVGCircleElement = particleEl;
+    const ripple: SVGCircleElement = rippleEl;
+    const measureBtn: HTMLButtonElement = measureEl;
+    const tallyEl: HTMLElement = tallyTarget;
+    const resetBtn: HTMLButtonElement = resetEl;
+
+    const reducedMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    const state: DemoState = {
+      phase: 'superposition',
+      tallyZero: 0,
+      tallyOne: 0,
+      rafId: 0,
+      startedAt: performance.now(),
+      collapseFrom: CENTER_X,
+      collapseTarget: CENTER_X,
+      collapseStart: 0,
+      rippleStart: 0,
+      resumeTimer: 0
+    };
+
+    function updateTallyUI(): void {
+      tallyEl.textContent = formatTally(state.tallyZero, state.tallyOne);
+      const hasAny = state.tallyZero + state.tallyOne > 0;
+      resetBtn.hidden = !hasAny;
+    }
+
+    function renderStatic(): void {
+      // Reduced-motion: particle sits stationary at center.
+      particle.setAttribute('cx', String(CENTER_X));
+      particle.setAttribute('cy', String(CENTER_Y));
+      ripple.setAttribute('opacity', '0');
+    }
+
+    function snapTo(x: number): void {
+      particle.setAttribute('cx', String(x));
+      particle.setAttribute('cy', String(CENTER_Y));
+    }
+
+    function oscFrame(now: number): void {
+      const elapsed = now - state.startedAt;
+      const x = CENTER_X + AMPLITUDE * Math.sin((elapsed * 2 * Math.PI) / PERIOD_MS);
+      const y = CENTER_Y + BREATHE_AMPLITUDE * Math.sin((elapsed * Math.PI) / PERIOD_MS);
+      particle.setAttribute('cx', String(x));
+      particle.setAttribute('cy', String(y));
+      state.rafId = requestAnimationFrame(oscFrame);
+    }
+
+    function collapseFrame(now: number): void {
+      const collapseElapsed = now - state.collapseStart;
+      const tCollapse = Math.min(1, collapseElapsed / COLLAPSE_MS);
+      const eased = easeCollapse(tCollapse);
+      const x = state.collapseFrom + (state.collapseTarget - state.collapseFrom) * eased;
+      particle.setAttribute('cx', String(x));
+      particle.setAttribute('cy', String(CENTER_Y));
+
+      // Ripple — starts at the moment of click, grows 14 -> 42, fades 0.6 -> 0.
+      const rippleElapsed = now - state.rippleStart;
+      const tRipple = Math.min(1, rippleElapsed / RIPPLE_MS);
+      const rippleR = 14 + (42 - 14) * tRipple;
+      const rippleOpacity = 0.6 * (1 - tRipple);
+      ripple.setAttribute('cx', String(state.collapseTarget));
+      ripple.setAttribute('cy', String(CENTER_Y));
+      ripple.setAttribute('r', String(rippleR));
+      ripple.setAttribute('opacity', String(rippleOpacity));
+
+      if (tCollapse >= 1 && tRipple >= 1) {
+        state.phase = 'collapsed';
+        ripple.setAttribute('opacity', '0');
+        return;
+      }
+      state.rafId = requestAnimationFrame(collapseFrame);
+    }
+
+    function startSuperposition(): void {
+      cancelAnimationFrame(state.rafId);
+      state.phase = 'superposition';
+      if (reducedMedia.matches) {
+        renderStatic();
+        return;
+      }
+      state.startedAt = performance.now();
+      state.rafId = requestAnimationFrame(oscFrame);
+    }
+
+    function currentParticleX(): number {
+      // Read back from the attribute so we resume from wherever the particle
+      // visually is, avoiding a jump at collapse start.
+      const raw = particle.getAttribute('cx');
+      const parsed = raw ? Number.parseFloat(raw) : CENTER_X;
+      return Number.isFinite(parsed) ? parsed : CENTER_X;
+    }
+
+    function onMeasure(): void {
+      if (state.phase !== 'superposition') return;
+      cancelAnimationFrame(state.rafId);
+      window.clearTimeout(state.resumeTimer);
+
+      const pickedOne = Math.random() < 0.5;
+      const targetX = pickedOne ? RIGHT_X : LEFT_X;
+      if (pickedOne) state.tallyOne += 1; else state.tallyZero += 1;
+      updateTallyUI();
+
+      if (reducedMedia.matches) {
+        // Snap-collapse, no ripple.
+        snapTo(targetX);
+        state.phase = 'collapsed';
+      } else {
+        state.phase = 'collapsing';
+        state.collapseFrom = currentParticleX();
+        state.collapseTarget = targetX;
+        state.collapseStart = performance.now();
+        state.rippleStart = state.collapseStart;
+        state.rafId = requestAnimationFrame(collapseFrame);
+      }
+
+      // Resume superposition after a short pause.
+      state.resumeTimer = window.setTimeout(() => {
+        startSuperposition();
+      }, RESUME_DELAY_MS);
+    }
+
+    function onReset(): void {
+      state.tallyZero = 0;
+      state.tallyOne = 0;
+      updateTallyUI();
+    }
+
+    function onReducedChange(): void {
+      cancelAnimationFrame(state.rafId);
+      window.clearTimeout(state.resumeTimer);
+      startSuperposition();
+    }
+
+    measureBtn.addEventListener('click', onMeasure);
+    resetBtn.addEventListener('click', onReset);
+    reducedMedia.addEventListener?.('change', onReducedChange);
+
+    updateTallyUI();
+    startSuperposition();
+  }
+
+  function initDemos(): void {
+    document.querySelectorAll<HTMLElement>('[data-superposition-demo]').forEach((el) => {
+      if (el.dataset.bound === '1') return;
+      el.dataset.bound = '1';
+      wire(el);
+    });
+  }
+
+  initDemos();
+  document.addEventListener('astro:page-load', initDemos);
+</script>
