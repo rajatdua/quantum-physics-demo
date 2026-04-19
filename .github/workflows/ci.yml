@@ -17,7 +17,7 @@ jobs:
       - run: npm ci
       - run: npx astro check
       - run: npm run test:unit
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run build
       - run: npm run test:e2e
         env:
